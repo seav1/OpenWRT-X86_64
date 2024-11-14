@@ -26,7 +26,7 @@ env:
 
 jobs:
   Build:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest  # Change from 'self-hosted' to 'ubuntu-latest'
     outputs:
       OPENWRTROOT: ${{ steps.update.outputs.OPENWRTROOT }}
       PLATFORM: ${{ steps.compile.outputs.PLATFORM }}
@@ -38,7 +38,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-
     - name: Initialization Environment
       env:
         DEBIAN_FRONTEND: noninteractive
@@ -51,12 +50,10 @@ jobs:
         [ -f /etc/issue.net ] && cat /etc/issue.net
         [ -f /etc/issue ] && cat /etc/issue
         ulimit -a
-        
     - name: Clone Source Code
       run: |
         df -hT $PWD
         git clone $REPO_URL -b $REPO_BRANCH openwrt
-
     - name: Update Feeds
       id: update
       run: |
@@ -75,12 +72,10 @@ jobs:
         ../scripts/immortalwrt_24.10/hook-package.sh
         ../scripts/immortalwrt_24.10/hook-base.sh
         ../scripts/immortalwrt_24.10/hook-feeds.sh
-        
     - name: Install Feeds
       run: |
         cd $OPENWRTROOT
         ./scripts/feeds install -a
-
     - name: Load Custom Configuration
       run: |
         [ -e files ] && mv files $OPENWRTROOT/files
@@ -92,7 +87,6 @@ jobs:
         ../scripts/preset-mihomo-core.sh amd64
         ../scripts/preset-terminal-tools.sh
         make defconfig
-        
     - name: Download Package
       id: package
       run: |
@@ -102,7 +96,6 @@ jobs:
         make download -j10
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
-  
     - name: Compile Packages
       id: compile
       run: |
@@ -130,7 +123,6 @@ jobs:
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "FIRMWARE=$PWD" >> $GITHUB_OUTPUT
         echo "COMPILE_STATUS=success" >> $GITHUB_OUTPUT
-
     - name: Generate Firmware
       if: steps.compile.outputs.COMPILE_STATUS == 'success'
       id: generate
@@ -145,21 +137,11 @@ jobs:
         pushd bin/targets/x86/64
         kernelv=`cat immortalwrt-x86-64-generic.manifest | grep 'kernel - ' |  awk -F '[- ]' '{print $4}'`
         echo "kernel_version=$kernelv" >> $GITHUB_OUTPUT
-        # rm -rf immortalwrt-x86-64-generic-kernel.bin
-        # rm -rf immortalwrt-x86-64-generic-rootfs.tar.gz
-        # rm -rf immortalwrt-x86-64-generic-squashfs-combined-efi.vhdx
-        # rm -rf immortalwrt-x86-64-generic-squashfs-combined-efi.vmdk
-        # rm -rf immortalwrt-x86-64-generic-squashfs-combined.img.gz
-        # rm -rf immortalwrt-x86-64-generic-squashfs-combined.vhdx
-        # rm -rf immortalwrt-x86-64-generic-squashfs-combined.vmdk
-        # rm -rf immortalwrt-x86-64-generic-squashfs-rootfs.img.gz
-        # mv immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz $(date +"%Y.%m.%d")-immortalwrt-x86-64-squashfs-efi.img.gz
         mv config.buildinfo $(date +"%Y.%m.%d")-immortalwrt-config.buildinfo
         popd
         make checksum
         mv bin/targets/x86/64/sha256sums bin/targets/x86/64/$(date +"%Y.%m.%d")-immortalwrt-sha256sums
         echo "GENERATE_STATUS=success" >> $GITHUB_OUTPUT
-
     - name: Generate release tag
       id: tag
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
@@ -167,9 +149,8 @@ jobs:
           echo "release_tag=$(date +"%Y.%m.%d")-immortalwrt2" >> $GITHUB_OUTPUT
           echo "release_date=$(date +"%Y.%m.%d")" >> $GITHUB_OUTPUT
           touch release.txt
-          echo "后台地址：192.168.11.1" >> release.txt
+          echo "后台地址：192.168.8.1" >> release.txt
           echo "status=success" >> $GITHUB_OUTPUT
-          
     - name: Upload firmware to release
       uses: softprops/action-gh-release@master
       if: steps.tag.outputs.status == 'success' && !cancelled()
@@ -180,13 +161,11 @@ jobs:
           tag_name: ${{ steps.tag.outputs.release_tag }}
           body_path: release.txt
           files: ${{ env.FIRMWARE }}/*
-
     - name: Delete workflow runs
       uses: Mattraks/delete-workflow-runs@v2
       with:
           retain_days: 5
           keep_minimum_runs: 5
-
     - name: Remove old Releases
       uses: dev-drprasad/delete-older-releases@v0.3.4
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
@@ -195,7 +174,6 @@ jobs:
           delete_tags: true
       env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
     - name: Delete Artifacts
       uses: geekyeggo/delete-artifact@v5
       with:
