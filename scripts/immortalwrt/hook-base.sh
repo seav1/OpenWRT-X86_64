@@ -1,6 +1,11 @@
 #!/bin/bash
 # Set to local prepare
 
+sed -i 's/default GCC_USE_VERSION_13/default GCC_USE_VERSION_14/g' toolchain/gcc/Config.in
+
+# apk-tools
+curl -s https://raw.githubusercontent.com/xuanranran/r4s_build_script/refs/heads/master/openwrt/patch/apk-tools/9999-hack-for-linux-pre-releases.patch > package/system/apk/patches/9999-hack-for-linux-pre-releases.patch
+
 curl -s https://raw.githubusercontent.com/xuanranran/r4s_build_script/refs/heads/master/openwrt/patch/generic-24.10/0005-kernel-Add-support-for-llvm-clang-compiler.patch | patch -p1
 
 # x86 - disable intel_pstate & mitigations
@@ -18,7 +23,7 @@ git clone https://github.com/sbwml/package_utils_util-linux -b openwrt-24.10 pac
 # git clone https://git.cooluc.com/sbwml/shortcut-fe package/new/shortcut-fe
 
 # FullCone module
-git clone https://git.cooluc.com/sbwml/nft-fullcone package/new/nft-fullcone
+# git clone https://git.cooluc.com/sbwml/nft-fullcone package/new/nft-fullcone
 
 # IPv6 NAT
 git clone https://github.com/sbwml/packages_new_nat6 package/new/nat6
