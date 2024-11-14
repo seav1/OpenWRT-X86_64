@@ -175,7 +175,7 @@ jobs:
           name: ${{ steps.tag.outputs.release_date }} x86_64-immortalwrt-24.10 固件
           tag_name: ${{ steps.tag.outputs.release_tag }}
           body_path: release.txt
-          files: ${{ env.FIRMWARE }}/*
+          files: ${{ env.FIRMWARE }}/*.img.gz
     - name: Delete workflow runs
       uses: Mattraks/delete-workflow-runs@v2
       with:
