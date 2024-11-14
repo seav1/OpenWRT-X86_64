@@ -94,6 +94,7 @@ jobs:
       run: |
         [ -e files ] && mv files $OPENWRTROOT/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRTROOT/.config
+        sudo apt-get update && sudo apt-get install -y libfuse-dev
         chmod +x scripts/*.sh
         cd $OPENWRTROOT
         ../$DIY_SH
