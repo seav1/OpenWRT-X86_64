@@ -1,8 +1,6 @@
 #!/bin/bash
 # Set to local prepare
 
-sed -i 's/default GCC_USE_VERSION_13/default GCC_USE_VERSION_14/g' toolchain/gcc/Config.in
-
 # apk-tools
 curl -s https://raw.githubusercontent.com/xuanranran/r4s_build_script/refs/heads/master/openwrt/patch/apk-tools/9999-hack-for-linux-pre-releases.patch > package/system/apk/patches/9999-hack-for-linux-pre-releases.patch
 
@@ -108,8 +106,8 @@ sed -i 's/procd_set_param stdout 1/procd_set_param stdout 0/g' customfeeds/packa
 sed -i 's/procd_set_param stderr 1/procd_set_param stderr 0/g' customfeeds/packages/utils/ttyd/files/ttyd.init
 
 # opkg
-mkdir -p package/system/opkg/patches
-curl -s https://raw.githubusercontent.com/xuanranran/r4s_build_script/refs/heads/master/openwrt/patch/opkg/900-opkg-download-disable-hsts.patch > package/system/opkg/patches/900-opkg-download-disable-hsts.patch
+# mkdir -p package/system/opkg/patches
+# curl -s https://raw.githubusercontent.com/xuanranran/r4s_build_script/refs/heads/master/openwrt/patch/opkg/900-opkg-download-disable-hsts.patch > package/system/opkg/patches/900-opkg-download-disable-hsts.patch
 
 # uwsgi - fix timeout
 sed -i '$a cgi-timeout = 600' customfeeds/packages/net/uwsgi/files-luci-support/luci-*.ini

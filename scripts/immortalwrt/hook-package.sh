@@ -7,7 +7,7 @@ git clone https://github.com/sbwml/autocore-arm -b openwrt-24.10 package/emortal
 
 # default settings
 rm -rf package/emortal/default-settings
-git clone https://github.com/xuanranran/default-settings package/emortal/default-settings
+git clone https://github.com/xuanranran/default-settings -b openwrt-24.10 package/emortal/default-settings
 
 # custom packages
 rm -rf customfeeds/luci/applications/{luci-app-filebrowser,luci-app-argon-config}
@@ -17,11 +17,16 @@ rm -rf customfeeds/packages/net/shadowsocks-libev
 rm -rf customfeeds/packages/net/{*alist,chinadns-ng,dns2socks,dns2tcp,lucky,sing-box}
 # chmod 755 customfeeds/lovepackages/luci-app-onliner/root/usr/share/onliner/setnlbw.sh
 
+sed -i 's/video,+libmesa +libwayland +libgudev/video,+libgudev/g' customfeeds/packages/multimedia/gst1-plugins-base/Makefile
+sed -i 's/controller,,+libgraphene +libjpeg +libpng/controller,,+libjpeg +libpng/g' customfeeds/packages/multimedia/gst1-plugins-base/Makefile
+
 # Update golang 1.23.x
 rm -rf customfeeds/packages/lang/golang
 git clone https://github.com/sbwml/packages_lang_golang customfeeds/packages/lang/golang
 # git clone https://github.com/sbwml/packages_lang_golang -b 23.x customfeeds/packages/lang/golang
 
+# rm -rf feeds/packages/utils/lrzsz
+# git clone https://github.com/sbwml/packages_utils_lrzsz package/new/lrzsz
 
 # samba4 - bump version
 rm -rf customfeeds/packages/net/samba4
@@ -50,6 +55,12 @@ pushd customfeeds/luci
 curl -s https://raw.githubusercontent.com/xuanranran/r4s_build_script/refs/heads/master/openwrt/patch/luci/applications/luci-app-natmap/0001-luci-app-natmap-add-default-STUN-server-lists.patch | patch -p1
 popd
 
+# luci-app-openclash: make version alpine compatible
+curl -s https://raw.githubusercontent.com/xuanranran/OpenWRT-X86_64/refs/heads/master/data/openclash_make_version_alpine_compatible.patch | patch -p1
+
+# mihomo_version_reading
+# curl -s https://raw.githubusercontent.com/xuanranran/OpenWRT-X86_64/refs/heads/master/data/mihomo-apk/mihomo-call > customfeeds/lovepackages/luci-app-mihomo/root/usr/libexec/mihomo-call
+
 # Realtek driver - R8168 & R8125 & R8126 & R8152 & R8101
 # rm -rf package/kernel/r8168 package/kernel/r8152 package/kernel/r8101 package/kernel/r8125 package/kernel/r8126
 # git clone https://github.com/sbwml/package_kernel_r8168 package/kernel/r8168
@@ -61,19 +72,18 @@ popd
 # procps-ng - top
 sed -i 's/enable-skill/enable-skill --disable-modern-top/g' customfeeds/packages/utils/procps-ng/Makefile
 
+# xdp-tools
+rm -rf package/network/utils/xdp-tools
+git clone https://github.com/sbwml/package_network_utils_xdp-tools package/network/utils/xdp-tools
+
 # perl
-# rm -rf customfeeds/packages/lang/perl
-# pushd customfeeds/packages/lang/
-# git clone --depth 1 https://github.com/immortalwrt/packages coolsnowwolf_perl && mv -n coolsnowwolf_perl/lang/perl ./ ; rm -rf coolsnowwolf_perl
-# popd
 # sed -i "/Target perl/i\TARGET_CFLAGS_PERL += -Wno-implicit-function-declaration -Wno-int-conversion\n" customfeeds/packages/lang/perl/Makefile
 # sed -i '/HOST_BUILD_PARALLEL/aPKG_BUILD_FLAGS:=no-mold' customfeeds/packages/lang/perl/Makefile
 
 # 替换杂项
-# rm -rf customfeeds/luci/applications/luci-app-package-manager
-# pushd customfeeds/luci/applications/
-# git clone --depth 1 https://github.com/openwrt/luci openwrt_package-manager && mv -n openwrt_package-manager/applications/luci-app-package-manager ./ ; rm -rf openwrt_package-manager
-# popd
+rm -rf customfeeds/luci/applications/luci-app-package-manager
+pushd customfeeds/luci/applications/
+git clone --depth 1 https://github.com/openwrt/luci openwrt_package-manager && mv -n openwrt_package-manager/applications/luci-app-package-manager ./ ; rm -rf openwrt_package-manager
+popd
 
-# 测试杂项
 
