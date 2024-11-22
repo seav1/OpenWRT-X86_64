@@ -124,7 +124,7 @@ jobs:
         cd $OPENWRTROOT
         export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
         echo -e "$(nproc) thread compile"
-        make clean;rm -rf tmp;cd feeds;cd ..;make -j1 V=99
+        make clean;rm -rf tmp;cd feeds;cd ..;make -j1 V=s
         make tools/compile -j$(nproc) || make tools/compile -j$(nproc)
         make toolchain/compile -j$(nproc) || make toolchain/compile -j$(nproc)
         make target/compile -j$(nproc) || make target/compile -j$(nproc) IGNORE_ERRORS=1
