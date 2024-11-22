@@ -94,8 +94,7 @@ jobs:
       run: |
         [ -e files ] && mv files $OPENWRTROOT/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRTROOT/.config
-        sudo apt-get install -y subversion g++ zlib1g-dev build-essential git python3 rsync man-db
-        sudo apt-get install -y libncurses5-dev gawk gettext unzip file libssl-dev wget  
+        sudo apt update && sudo apt install -y build-essential gcc g++ make perl python3 libncurses-dev zlib1g-dev
         chmod +x scripts/*.sh
         cd $OPENWRTROOT
         ../$DIY_SH
