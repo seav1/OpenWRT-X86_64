@@ -11,10 +11,6 @@ name: OpenWrt_immortalwrt_24.10
 on:
   repository_dispatch:
   workflow_dispatch:
-  # schedule:
-  #   - cron: 11 23 * * * 
-  # watch:
-  #   types: started
 
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
@@ -26,7 +22,7 @@ env:
 
 jobs:
   Build:
-    runs-on: ubuntu-latest  # Change from 'self-hosted' to 'ubuntu-latest'
+    runs-on: ubuntu-latest
     outputs:
       OPENWRTROOT: ${{ steps.update.outputs.OPENWRTROOT }}
       PLATFORM: ${{ steps.compile.outputs.PLATFORM }}
@@ -38,6 +34,13 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libncurses5-dev gawk git subversion \
+          libssl-dev gettext unzip zlib1g-dev file python3
+
     - name: Initialization Environment
       env:
         DEBIAN_FRONTEND: noninteractive
@@ -50,7 +53,7 @@ jobs:
         [ -f /etc/issue.net ] && cat /etc/issue.net
         [ -f /etc/issue ] && cat /etc/issue
         ulimit -a
-        
+
     - name: Free Disk Space
       uses: endersonmenezes/free-disk-space@v2
       with:
@@ -68,6 +71,7 @@ jobs:
       run: |
         df -hT $PWD
         git clone $REPO_URL -b $REPO_BRANCH openwrt
+
     - name: Update Feeds
       id: update
       run: |
@@ -86,18 +90,16 @@ jobs:
         ../scripts/immortalwrt_24.10/hook-package.sh
         ../scripts/immortalwrt_24.10/hook-base.sh
         ../scripts/immortalwrt_24.10/hook-feeds.sh
+        
     - name: Install Feeds
       run: |
         cd $OPENWRTROOT
         ./scripts/feeds install -a
+
     - name: Load Custom Configuration
       run: |
         [ -e files ] && mv files $OPENWRTROOT/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRTROOT/.config
-        sudo apt update
-        sudo apt install -y build-essential libncurses5-dev gawk git gettext \
-        zlib1g-dev file wget libssl-dev python3 python3-distutils rsync unzip
-        
         chmod +x scripts/*.sh
         cd $OPENWRTROOT
         ../$DIY_SH
@@ -105,6 +107,7 @@ jobs:
         ../scripts/preset-mihomo-core.sh amd64
         ../scripts/preset-terminal-tools.sh
         make defconfig
+        
     - name: Download Package
       id: package
       run: |
@@ -114,17 +117,18 @@ jobs:
         make download -j10
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
+  
     - name: Compile Packages
       id: compile
       run: |
         cd $OPENWRTROOT
         export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
         echo -e "$(nproc) thread compile"
-        make tools/compile -j$(nproc) V=s || make tools/compile -j1 V=s
-        make toolchain/compile -j$(nproc) V=s || make toolchain/compile -j1 V=s
-        make target/compile -j$(nproc) V=s || make target/compile -j1 V=s IGNORE_ERRORS=1
+        make tools/compile -j$(nproc) || make tools/compile -j$(nproc)
+        make toolchain/compile -j$(nproc) || make toolchain/compile -j$(nproc)
+        make target/compile -j$(nproc) || make target/compile -j$(nproc) IGNORE_ERRORS=1
         make diffconfig
-        make package/compile -j$(nproc) V=s IGNORE_ERRORS=1 || make package/compile -j1 V=s IGNORE_ERRORS=1
+        make package/compile -j$(nproc) IGNORE_ERRORS=1 || make package/compile -j$(nproc) IGNORE_ERRORS=1
         make package/index
         cd $OPENWRTROOT/bin/packages/*
         PLATFORM=$(basename `pwd`)
@@ -141,6 +145,7 @@ jobs:
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "FIRMWARE=$PWD" >> $GITHUB_OUTPUT
         echo "COMPILE_STATUS=success" >> $GITHUB_OUTPUT
+
     - name: Generate Firmware
       if: steps.compile.outputs.COMPILE_STATUS == 'success'
       id: generate
@@ -160,6 +165,7 @@ jobs:
         make checksum
         mv bin/targets/x86/64/sha256sums bin/targets/x86/64/$(date +"%Y.%m.%d")-immortalwrt-sha256sums
         echo "GENERATE_STATUS=success" >> $GITHUB_OUTPUT
+
     - name: Generate release tag
       id: tag
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
@@ -169,6 +175,7 @@ jobs:
           touch release.txt
           echo "后台地址：192.168.8.1" >> release.txt
           echo "status=success" >> $GITHUB_OUTPUT
+          
     - name: Upload firmware to release
       uses: softprops/action-gh-release@master
       if: steps.tag.outputs.status == 'success' && !cancelled()
@@ -179,11 +186,13 @@ jobs:
           tag_name: ${{ steps.tag.outputs.release_tag }}
           body_path: release.txt
           files: ${{ env.FIRMWARE }}/*.img.gz
+
     - name: Delete workflow runs
       uses: Mattraks/delete-workflow-runs@v2
       with:
           retain_days: 5
           keep_minimum_runs: 5
+
     - name: Remove old Releases
       uses: dev-drprasad/delete-older-releases@v0.3.4
       if: env.UPLOAD_RELEASE == 'true' && !cancelled()
@@ -192,6 +201,7 @@ jobs:
           delete_tags: true
       env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Delete Artifacts
       uses: geekyeggo/delete-artifact@v5
       with:
