@@ -1,7 +1,10 @@
+你可以将 `runs-on: self-hosted` 修改为 `runs-on: ubuntu-latest`，并相应地调整代码。以下是修改后的代码：
+
+```yaml
 #=================================================
 # https://github.com/P3TERX/Actions-OpenWrt
 # Description: Build OpenWrt using GitHub Actions
-# Lisence: MIT
+# License: MIT
 # Author: P3TERX
 # Blog: https://p3terx.com
 #=================================================
@@ -11,6 +14,10 @@ name: OpenWrt_immortalwrt_24.10
 on:
   repository_dispatch:
   workflow_dispatch:
+  # schedule:
+  #   - cron: 11 23 * * * 
+  # watch:
+  #   types: started
 
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
@@ -34,12 +41,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-
-    - name: Install Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential libncurses5-dev gawk git subversion \
-          libssl-dev gettext unzip zlib1g-dev file python3
 
     - name: Initialization Environment
       env:
@@ -124,7 +125,6 @@ jobs:
         cd $OPENWRTROOT
         export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
         echo -e "$(nproc) thread compile"
-        make clean;rm -rf tmp;cd feeds;cd ..;make -j1 V=s
         make tools/compile -j$(nproc) || make tools/compile -j$(nproc)
         make toolchain/compile -j$(nproc) || make toolchain/compile -j$(nproc)
         make target/compile -j$(nproc) || make target/compile -j$(nproc) IGNORE_ERRORS=1
@@ -161,6 +161,15 @@ jobs:
         pushd bin/targets/x86/64
         kernelv=`cat immortalwrt-x86-64-generic.manifest | grep 'kernel - ' |  awk -F '[- ]' '{print $4}'`
         echo "kernel_version=$kernelv" >> $GITHUB_OUTPUT
+        # rm -rf immortalwrt-x86-64-generic-kernel.bin
+        # rm -rf immortalwrt-x86-64-generic-rootfs.tar.gz
+        # rm -rf immortalwrt-x86-64-generic-squashfs-combined-efi.vhdx
+        # rm -rf immortalwrt-x86-64-generic-squashfs-combined-efi.vmdk
+        # rm -rf immortalwrt-x86-64-generic-squashfs-combined.img.gz
+        # rm -rf immortalwrt-x86-64-generic-squashfs-combined.vhdx
+        # rm -rf immortalwrt-x86-64-generic-squashfs-combined.vmdk
+        # rm -rf immortalwrt-x86-64-generic-squashfs-rootfs.img.gz
+        # mv immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz $(date +"%Y.%m.%d")-immortalwrt-x86-64-squashfs-efi.img.gz
         mv config.buildinfo $(date +"%Y.%m.%d")-immortalwrt-config.buildinfo
         popd
         make checksum
@@ -178,7 +187,7 @@ jobs:
           echo "status=success" >> $GITHUB_OUTPUT
           
     - name: Upload firmware to release
-      uses: softprops/action-gh-release@master
+      uses:softprops/action-gh-release@master
       if: steps.tag.outputs.status == 'success' && !cancelled()
       env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -186,7 +195,7 @@ jobs:
           name: ${{ steps.tag.outputs.release_date }} x86_64-immortalwrt-24.10 固件
           tag_name: ${{ steps.tag.outputs.release_tag }}
           body_path: release.txt
-          files: ${{ env.FIRMWARE }}/*.img.gz
+          files: ${{ env.FIRMWARE }}/*
 
     - name: Delete workflow runs
       uses: Mattraks/delete-workflow-runs@v2
