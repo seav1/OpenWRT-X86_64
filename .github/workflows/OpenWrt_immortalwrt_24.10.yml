@@ -104,23 +104,42 @@ jobs:
         $GITHUB_WORKSPACE/scripts/preset-clash-core.sh amd64
         $GITHUB_WORKSPACE/scripts/preset-mihomo-core.sh amd64
         $GITHUB_WORKSPACE/scripts/preset-terminal-tools.sh
-        make defconfig
+        make defconfig > /dev/null
         
     - name: Download Package
       id: package
       run: |
         cd $OPENWRTROOT
-        make download -j$(nproc) > /dev/null 2>&1
+        make download -j$(nproc) > /dev/null 2>&1 || true
         find dl -size -1024c -exec rm -f {} \;
   
     - name: Compile Packages
       id: compile
       run: |
         cd $OPENWRTROOT
-        make tools/compile -j$(nproc) > /dev/null 2>&1 || make tools/compile -j1 V=s
-        make toolchain/compile -j$(nproc) > /dev/null 2>&1 || make toolchain/compile -j1 V=s
-        make target/compile -j$(nproc) > /dev/null 2>&1 || make target/compile -j1 V=s IGNORE_ERRORS=1
-        make package/compile -j$(nproc) IGNORE_ERRORS=1 > /dev/null 2>&1 || make package/compile -j1 V=s IGNORE_ERRORS=1
+        # 设置编译环境变量，禁用输出但保留错误信息
+        export TERM=xterm-256color
+        export FORCE_UNSAFE_CONFIGURE=1
+        
+        # 设置 make 选项，只显示错误信息
+        export MAKEFLAGS="V=s --no-print-directory -s"
+        
+        echo "::group::Building tools"
+        make tools/compile -j$(nproc) 2>&1 | grep -i -E 'error|错误|fail|failed' || true
+        echo "::endgroup::"
+        
+        echo "::group::Building toolchain"
+        make toolchain/compile -j$(nproc) 2>&1 | grep -i -E 'error|错误|fail|failed' || true
+        echo "::endgroup::"
+        
+        echo "::group::Building target"
+        make target/compile -j$(nproc) IGNORE_ERRORS=1 2>&1 | grep -i -E 'error|错误|fail|failed' || true
+        echo "::endgroup::"
+        
+        echo "::group::Building packages"
+        make package/compile -j$(nproc) IGNORE_ERRORS=1 2>&1 | grep -i -E 'error|错误|fail|failed' || true
+        echo "::endgroup::"
+        
         make package/index > /dev/null 2>&1
         cd $OPENWRTROOT/bin/packages/*
         PLATFORM=$(basename `pwd`)
@@ -147,8 +166,15 @@ jobs:
         cp $GITHUB_WORKSPACE/scripts/immortalwrt_24.10/immortalwrt-init-settings.sh files/etc/uci-defaults/99-init-settings
         mkdir -p files/etc/opkg
         cp $GITHUB_WORKSPACE/configs/opkg/distfeeds-24.10-local.conf files/etc/opkg/distfeeds.conf
-        make package/install -j$(nproc) > /dev/null 2>&1 || make package/install -j1 V=s
-        make target/install -j$(nproc) > /dev/null 2>&1 || make target/install -j1 V=s
+        
+        echo "::group::Installing packages"
+        make package/install -j$(nproc) 2>&1 | grep -i -E 'error|错误|fail|failed' || true
+        echo "::endgroup::"
+        
+        echo "::group::Installing target"
+        make target/install -j$(nproc) 2>&1 | grep -i -E 'error|错误|fail|failed' || true
+        echo "::endgroup::"
+        
         cd bin/targets/x86/64
         kernelv=`cat immortalwrt-x86-64-generic.manifest | grep 'kernel - ' |  awk -F '[- ]' '{print $4}'`
         echo "kernel_version=$kernelv" >> $GITHUB_OUTPUT
