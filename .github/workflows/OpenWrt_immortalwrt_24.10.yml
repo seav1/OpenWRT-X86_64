@@ -70,14 +70,7 @@ jobs:
         [ -f /etc/issue.net ] && cat /etc/issue.net
         [ -f /etc/issue ] && cat /etc/issue
         ulimit -a
-
-    # 设置编译所需的 ulimit 参数
-    - name: Set Build Environment Variables
-      run: |
-        ulimit -u 65535
-        ulimit -n 65535
-        ulimit -s 65535
-        
+ 
     - name: Free Disk Space
       uses: endersonmenezes/free-disk-space@v2
       with:
