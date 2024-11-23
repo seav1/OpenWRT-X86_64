@@ -1,11 +1,3 @@
-#=================================================
-# https://github.com/P3TERX/Actions-OpenWrt
-# Description: Build OpenWrt using GitHub Actions
-# License: MIT
-# Author: P3TERX
-# Blog: https://p3terx.com
-#=================================================
-
 name: OpenWrt_immortalwrt_24.10
 
 on:
@@ -43,6 +35,14 @@ jobs:
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        sudo -E apt-get -qq update
+        sudo -E apt-get -qq install $(curl -fsSL git.io/depends-ubuntu-2004)
+        sudo -E apt-get -qq autoremove --purge
+        sudo -E apt-get -qq clean
+        sudo timedatectl set-timezone "$TZ"
+        sudo mkdir -p /workdir
+        sudo chown $USER:$GROUPS /workdir
         echo -e "Total CPU cores\t: $(nproc)"
         cat /proc/cpuinfo | grep 'model name'
         free -h
@@ -51,7 +51,7 @@ jobs:
         [ -f /etc/issue.net ] && cat /etc/issue.net
         [ -f /etc/issue ] && cat /etc/issue
         ulimit -a
-        
+
     - name: Free Disk Space
       uses: endersonmenezes/free-disk-space@v2
       with:
@@ -66,6 +66,7 @@ jobs:
         testing: false
         
     - name: Clone Source Code
+      working-directory: /workdir
       run: |
         df -hT $PWD
         git clone $REPO_URL -b $REPO_BRANCH openwrt
@@ -73,7 +74,7 @@ jobs:
     - name: Update Feeds
       id: update
       run: |
-        cd openwrt
+        cd /workdir/openwrt
         echo "OPENWRTROOT=$PWD" >> $GITHUB_ENV
         echo "OPENWRTROOT=$PWD" >> $GITHUB_OUTPUT
         mkdir customfeeds
@@ -83,11 +84,11 @@ jobs:
         git clone --depth=1 https://github.com/immortalwrt/luci -b $REPO_BRANCH customfeeds/luci
         git clone --depth=1 https://github.com/openwrt/routing -b $REPO_BRANCH customfeeds/routing
         git clone --depth=1 https://github.com/openwrt/telephony -b $REPO_BRANCH customfeeds/telephony
-        chmod +x ../scripts/*.sh
-        chmod +x ../scripts/immortalwrt_24.10/*.sh
-        ../scripts/immortalwrt_24.10/hook-package.sh
-        ../scripts/immortalwrt_24.10/hook-base.sh
-        ../scripts/immortalwrt_24.10/hook-feeds.sh
+        chmod +x $GITHUB_WORKSPACE/scripts/*.sh
+        chmod +x $GITHUB_WORKSPACE/scripts/immortalwrt_24.10/*.sh
+        $GITHUB_WORKSPACE/scripts/immortalwrt_24.10/hook-package.sh
+        $GITHUB_WORKSPACE/scripts/immortalwrt_24.10/hook-base.sh
+        $GITHUB_WORKSPACE/scripts/immortalwrt_24.10/hook-feeds.sh
         
     - name: Install Feeds
       run: |
@@ -96,14 +97,14 @@ jobs:
 
     - name: Load Custom Configuration
       run: |
-        [ -e files ] && mv files $OPENWRTROOT/files
-        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRTROOT/.config
-        chmod +x scripts/*.sh
+        [ -e $GITHUB_WORKSPACE/files ] && mv $GITHUB_WORKSPACE/files $OPENWRTROOT/files
+        [ -e $GITHUB_WORKSPACE/$CONFIG_FILE ] && mv $GITHUB_WORKSPACE/$CONFIG_FILE $OPENWRTROOT/.config
+        chmod +x $GITHUB_WORKSPACE/scripts/*.sh
         cd $OPENWRTROOT
-        ../$DIY_SH
-        ../scripts/preset-clash-core.sh amd64
-        ../scripts/preset-mihomo-core.sh amd64
-        ../scripts/preset-terminal-tools.sh
+        $GITHUB_WORKSPACE/$DIY_SH
+        $GITHUB_WORKSPACE/scripts/preset-clash-core.sh amd64
+        $GITHUB_WORKSPACE/scripts/preset-mihomo-core.sh amd64
+        $GITHUB_WORKSPACE/scripts/preset-terminal-tools.sh
         make defconfig
         
     - name: Download Package
@@ -120,7 +121,6 @@ jobs:
       id: compile
       run: |
         cd $OPENWRTROOT
-        export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
         echo -e "$(nproc) thread compile"
         make tools/compile -j$(nproc) || make tools/compile -j$(nproc)
         make toolchain/compile -j$(nproc) || make toolchain/compile -j$(nproc)
@@ -150,23 +150,14 @@ jobs:
       run: |
         cd $OPENWRTROOT
         mkdir -p files/etc/uci-defaults/
-        cp ../scripts/immortalwrt_24.10/immortalwrt-init-settings.sh files/etc/uci-defaults/99-init-settings
+        cp $GITHUB_WORKSPACE/scripts/immortalwrt_24.10/immortalwrt-init-settings.sh files/etc/uci-defaults/99-init-settings
         mkdir -p files/etc/opkg
-        cp ../configs/opkg/distfeeds-24.10-local.conf files/etc/opkg/distfeeds.conf
+        cp $GITHUB_WORKSPACE/configs/opkg/distfeeds-24.10-local.conf files/etc/opkg/distfeeds.conf
         make package/install -j$(nproc) || make package/install -j1 V=s
         make target/install -j$(nproc) || make target/install -j1 V=s
         pushd bin/targets/x86/64
         kernelv=`cat immortalwrt-x86-64-generic.manifest | grep 'kernel - ' |  awk -F '[- ]' '{print $4}'`
         echo "kernel_version=$kernelv" >> $GITHUB_OUTPUT
-        # rm -rf immortalwrt-x86-64-generic-kernel.bin
-        # rm -rf immortalwrt-x86-64-generic-rootfs.tar.gz
-        # rm -rf immortalwrt-x86-64-generic-squashfs-combined-efi.vhdx
-        # rm -rf immortalwrt-x86-64-generic-squashfs-combined-efi.vmdk
-        # rm -rf immortalwrt-x86-64-generic-squashfs-combined.img.gz
-        # rm -rf immortalwrt-x86-64-generic-squashfs-combined.vhdx
-        # rm -rf immortalwrt-x86-64-generic-squashfs-combined.vmdk
-        # rm -rf immortalwrt-x86-64-generic-squashfs-rootfs.img.gz
-        # mv immortalwrt-x86-64-generic-squashfs-combined-efi.img.gz $(date +"%Y.%m.%d")-immortalwrt-x86-64-squashfs-efi.img.gz
         mv config.buildinfo $(date +"%Y.%m.%d")-immortalwrt-config.buildinfo
         popd
         make checksum
@@ -180,7 +171,7 @@ jobs:
           echo "release_tag=$(date +"%Y.%m.%d")-immortalwrt2" >> $GITHUB_OUTPUT
           echo "release_date=$(date +"%Y.%m.%d")" >> $GITHUB_OUTPUT
           touch release.txt
-          echo "后台地址：192.168.11.1" >> release.txt
+          echo "后台地址：192.168.8.1" >> release.txt
           echo "status=success" >> $GITHUB_OUTPUT
           
     - name: Upload firmware to release
