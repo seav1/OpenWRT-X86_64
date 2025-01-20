@@ -37,6 +37,8 @@ export date_version=$(date -d "$(rdate -n -4 -p ntp.aliyun.com)" +'%Y-%m-%d')
 sed -i "s/${orig_version}/${orig_version} (${date_version})/g" zzz-default-settings
 popd
 
+sed -i 's/boardinfo.release.description +/boardinfo.release.description + boardinfo.release.revision +/g' customfeeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/10_system.js
+
 # Change default shell to zsh
 sed -i 's/\/bin\/ash/\/usr\/bin\/zsh/g' package/base-files/files/etc/passwd
 
@@ -45,7 +47,7 @@ sed -i 's/192.168.1.1/192.168.8.1/g' package/base-files/files/bin/config_generat
 sed -i 's/192.168.1.1/192.168.8.1/g' package/base-files/luci2/bin/config_generate
 
 # x86 型号只显示 CPU 型号
-sed -i 's/${g}.*/${a}${b}${c}${d}${e}${f}${hydrid}/g' package/lean/autocore/files/x86/autocore
+# sed -i 's/${g}.*/${a}${b}${c}${d}${e}${f}${hydrid}/g' package/lean/autocore/files/x86/autocore
 
 # 修改Makefile 禁用iperf3-ssl
 sed -i 's/iperf3-ssl[[:space:]]*//g' target/linux/x86/Makefile
@@ -63,4 +65,4 @@ cp -f $GITHUB_WORKSPACE/data/banner package/base-files/files/etc/banner
 cp -f $GITHUB_WORKSPACE/data/02_network target/linux/x86/base-files/etc/board.d/02_network
 
 # Test kernel 6.12
-sed -i 's/6.6/6.12/g' target/linux/x86/Makefile
+# sed -i 's/6.6/6.12/g' target/linux/x86/Makefile
