@@ -117,38 +117,52 @@ jobs:
       id: compile
       run: |
         cd $OPENWRTROOT
-        # 设置编译环境变量，禁用输出但保留错误信息
+        
+        # 设置编译环境变量
         export TERM=xterm-256color
         export FORCE_UNSAFE_CONFIGURE=1
-        
-        # 设置 make 选项，只显示错误信息
         export MAKEFLAGS="V=s --no-print-directory -s"
         
+        # 定义日志处理函数
+        log_error() {
+          while IFS= read -r line; do
+            if echo "$line" | grep -i -E 'error|错误|fail|failed' > /dev/null; then
+              echo "$line"
+            fi
+          done
+        }
+        
+        # 使用分组来组织输出
         echo "::group::Building tools"
-        make tools/compile -j$(nproc) 2>&1 | grep -i -E 'error|错误|fail|failed' || true
+        make tools/compile -j$(nproc) 2>&1 | log_error
         echo "::endgroup::"
         
         echo "::group::Building toolchain"
-        make toolchain/compile -j$(nproc) 2>&1 | grep -i -E 'error|错误|fail|failed' || true
+        make toolchain/compile -j$(nproc) 2>&1 | log_error
         echo "::endgroup::"
         
         echo "::group::Building target"
-        make target/compile -j$(nproc) IGNORE_ERRORS=1 2>&1 | grep -i -E 'error|错误|fail|failed' || true
+        make target/compile -j$(nproc) IGNORE_ERRORS=1 2>&1 | log_error
         echo "::endgroup::"
         
         echo "::group::Building packages"
-        make package/compile -j$(nproc) IGNORE_ERRORS=1 2>&1 | grep -i -E 'error|错误|fail|failed' || true
+        make package/compile -j$(nproc) IGNORE_ERRORS=1 2>&1 | log_error
         echo "::endgroup::"
         
+        # 生成包索引
         make package/index > /dev/null 2>&1
+        
+        # 设置环境变量
         cd $OPENWRTROOT/bin/packages/*
         PLATFORM=$(basename `pwd`)
         echo "PLATFORM=$PLATFORM" >> $GITHUB_ENV
         echo "PLATFORM=$PLATFORM" >> $GITHUB_OUTPUT
+        
         cd $OPENWRTROOT/bin/targets/*
         TARGET=$(basename `pwd`)
         echo "TARGET=$TARGET" >> $GITHUB_ENV
         echo "TARGET=$TARGET" >> $GITHUB_OUTPUT
+        
         cd *
         SUBTARGET=$(basename `pwd`)
         echo "SUBTARGET=$SUBTARGET" >> $GITHUB_ENV
@@ -156,7 +170,7 @@ jobs:
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
         echo "FIRMWARE=$PWD" >> $GITHUB_OUTPUT
         echo "COMPILE_STATUS=success" >> $GITHUB_OUTPUT
-
+        
     - name: Generate Firmware
       if: steps.compile.outputs.COMPILE_STATUS == 'success'
       id: generate
